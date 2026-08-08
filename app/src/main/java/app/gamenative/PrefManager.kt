@@ -17,6 +17,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
+import app.gamenative.ui.enums.LibraryTab
+import app.gamenative.ui.enums.LibraryTabPreference
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
@@ -867,6 +869,16 @@ object PrefManager {
         }
         set(value) {
             setPref(LIBRARY_SORT_KEY, value.key)
+        }
+
+    private val LIBRARY_TAB_PREFERENCES = stringPreferencesKey("library_tab_preferences")
+    var libraryTabPreferences: List<LibraryTabPreference>
+        get() = LibraryTab.normalizePreferences(getPref(LIBRARY_TAB_PREFERENCES, ""))
+        set(value) {
+            setPref(
+                LIBRARY_TAB_PREFERENCES,
+                LibraryTab.serializePreferences(LibraryTab.normalizePreferences(LibraryTab.serializePreferences(value))),
+            )
         }
 
     /**

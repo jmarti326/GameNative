@@ -98,6 +98,7 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
+import app.gamenative.ui.screen.library.components.LibraryTabsCustomizer
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
@@ -154,6 +155,9 @@ fun HomeLibraryScreen(
         onTabChanged = viewModel::onTabChanged,
         onPreviousTab = viewModel::onPreviousTab,
         onNextTab = viewModel::onNextTab,
+        onLibraryTabVisibilityChanged = viewModel::onLibraryTabVisibilityChanged,
+        onLibraryTabMoved = viewModel::onLibraryTabMoved,
+        onResetLibraryTabs = viewModel::resetLibraryTabPreferences,
         isOffline = isOffline,
     )
 }
@@ -192,6 +196,9 @@ private fun LibraryScreenContent(
     onTabChanged: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
+    onLibraryTabVisibilityChanged: (LibraryTab, Boolean) -> Unit,
+    onLibraryTabMoved: (LibraryTab, Int) -> Unit,
+    onResetLibraryTabs: () -> Unit,
     isOffline: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -324,6 +331,7 @@ private fun LibraryScreenContent(
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
 
     var isSystemMenuOpen by remember { mutableStateOf(false) }
+    var isTabCustomizerOpen by remember { mutableStateOf(false) }
     // Track previous overlay states to detect when they close
     var wasSystemMenuOpen by remember { mutableStateOf(false) }
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
@@ -464,6 +472,10 @@ private fun LibraryScreenContent(
 
     BackHandler(enabled = state.isOptionsPanelOpen) {
         onOptionsPanelToggle(false)
+    }
+
+    BackHandler(enabled = isTabCustomizerOpen) {
+        isTabCustomizerOpen = false
     }
 
     BackHandler(enabled = state.isSearching && selectedAppId == null) {
@@ -996,6 +1008,7 @@ private fun LibraryScreenContent(
                     // Tab bar when not searching
                     LibraryTabBar(
                         currentTab = state.currentTab,
+                        tabs = state.visibleLibraryTabs,
                         tabCounts = mapOf(
                             LibraryTab.ALL to state.allCount,
                             LibraryTab.STEAM to state.steamCount,
@@ -1009,6 +1022,7 @@ private fun LibraryScreenContent(
                         onSearchClick = { onIsSearching(true) },
                         onAddGameClick = onAddCustomGameClick,
                         onMenuClick = { isSystemMenuOpen = true },
+                        onCustomizeTabsClick = { isTabCustomizerOpen = true },
                         onNavigateDownToGrid = {
                             if (state.appInfoList.isNotEmpty()) {
                                 requestContentFocusOrDefer()
@@ -1057,7 +1071,7 @@ private fun LibraryScreenContent(
         }
 
         // Bottom action bar
-        if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+        if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen && !isTabCustomizerOpen) {
             val libraryActions = if (state.isSearching) {
                 listOf(
                     LibraryActions.select,
@@ -1176,6 +1190,23 @@ private fun LibraryScreenContent(
                         callbacks = PlatformLogoutCallbacks(),
                     )
                 },
+            )
+
+            LibraryTabsCustomizer(
+                visible = isTabCustomizerOpen,
+                preferences = state.libraryTabPreferences,
+                tabCounts = mapOf(
+                    LibraryTab.ALL to state.allCount,
+                    LibraryTab.STEAM to state.steamCount,
+                    LibraryTab.GOG to state.gogCount,
+                    LibraryTab.EPIC to state.epicCount,
+                    LibraryTab.AMAZON to state.amazonCount,
+                    LibraryTab.LOCAL to state.localCount,
+                ),
+                onVisibilityChanged = onLibraryTabVisibilityChanged,
+                onMove = onLibraryTabMoved,
+                onReset = onResetLibraryTabs,
+                onDismiss = { isTabCustomizerOpen = false },
             )
         }
 
@@ -1304,6 +1335,31 @@ private fun Preview_LibraryScreenContent() {
             },
             onPreviousTab = {},
             onNextTab = {},
+            onLibraryTabVisibilityChanged = { tab, visible ->
+                state = state.copy(
+                    libraryTabPreferences = state.libraryTabPreferences.map {
+                        if (it.tab == tab) it.copy(isVisible = visible) else it
+                    },
+                    currentTab = if (!visible && state.currentTab == tab) LibraryTab.ALL else state.currentTab,
+                )
+            },
+            onLibraryTabMoved = { tab, offset ->
+                val updated = state.libraryTabPreferences.toMutableList()
+                val current = updated.indexOfFirst { it.tab == tab }
+                val target = (current + offset).coerceIn(1, updated.lastIndex)
+                if (current >= 1 && current != target) {
+                    val item = updated.removeAt(current)
+                    updated.add(target, item)
+                    state = state.copy(libraryTabPreferences = updated)
+                }
+            },
+            onResetLibraryTabs = {
+                state = state.copy(
+                    libraryTabPreferences = LibraryTab.visibleEntries.map {
+                        app.gamenative.ui.enums.LibraryTabPreference(it, isVisible = true)
+                    },
+                )
+            },
         )
     }
 }

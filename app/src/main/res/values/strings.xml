@@ -115,6 +115,16 @@
     <string name="tab_local">Custom</string>
     <string name="library_tab_with_count">%1$s (%2$d)</string>
     <string name="library_search_close">Close search</string>
+    <string name="library_customize_tabs">Customize tabs</string>
+    <string name="library_customize_tabs_description">Choose which stores appear in navigation. Hidden stores still appear in All.</string>
+    <string name="library_tabs_live_preview">LIVE PREVIEW</string>
+    <string name="library_tabs_reset">Reset to default</string>
+    <string name="library_tabs_always_visible">Always visible · fixed first</string>
+    <string name="library_tabs_pinned">Pinned</string>
+    <string name="library_tabs_game_count">%1$d games</string>
+    <string name="library_tabs_drag_to_reorder">Long press and drag to reorder</string>
+    <string name="library_tabs_move_up">Move %1$s up</string>
+    <string name="library_tabs_move_down">Move %1$s down</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
