@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameNative — Customize library tabs</title>
+  <link rel="stylesheet" href="../themes/default.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding-top: 58px; background: #050507; color: var(--color-text); font-family: var(--font-sans); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .variant-nav { position: fixed; inset: 0 0 auto; z-index: 100; min-height: 58px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(18,18,26,.98); border-bottom: 1px solid var(--color-border); overflow-x: auto; }
+    .variant-tab, .tool-button { border: 1px solid var(--color-border); border-radius: var(--radius-full); padding: 9px 14px; background: transparent; cursor: pointer; white-space: nowrap; transition: all .15s ease; }
+    .variant-tab:hover, .variant-tab.active, .tool-button:hover { border-color: var(--color-accent); background: rgba(0,212,255,.1); }
+    .variant { display: none; }
+    .variant.active { display: block; }
+    .viewport { width: 100%; max-width: 1280px; min-height: calc(100vh - 58px); margin: 0 auto; overflow: hidden; background: var(--color-bg); transition: max-width .2s ease; box-shadow: var(--shadow-lg); }
+    .app { position: relative; min-height: calc(100vh - 58px); background: radial-gradient(circle at 75% 10%, rgba(139,92,246,.18), transparent 34%), var(--color-bg); }
+    .topbar { height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-bottom: 1px solid rgba(58,58,74,.5); }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg,var(--color-accent),#8b5cf6,#ec4899); color: #09090b; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(145deg,#4c1d95,#0891b2); border: 2px solid var(--color-border); }
+    .library-head { padding: 24px 22px 10px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    .eyebrow { color: var(--color-accent); font-size: var(--text-xs); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 5px 0 0; font-size: clamp(1.55rem,4vw,2.35rem); letter-spacing: -.04em; }
+    .count { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .tab-shell { display: flex; align-items: center; gap: 8px; padding: 10px 22px 18px; }
+    .tab-row { flex: 1; min-width: 0; display: flex; gap: 4px; padding: 4px; overflow-x: auto; background: rgba(39,39,42,.58); border: 1px solid rgba(58,58,74,.68); border-radius: var(--radius-full); scrollbar-width: none; }
+    .tab-row::-webkit-scrollbar { display: none; }
+    .lib-tab { border: 0; border-radius: var(--radius-full); padding: 9px 14px; background: transparent; color: var(--color-text-muted); font-size: var(--text-sm); font-weight: 650; white-space: nowrap; cursor: pointer; transition: all .15s ease; }
+    .lib-tab:hover { color: var(--color-text); background: rgba(255,255,255,.06); }
+    .lib-tab.selected { color: white; background: var(--color-primary); box-shadow: 0 5px 16px rgba(162,28,175,.3); }
+    .icon-button { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-surface); cursor: pointer; transition: all .15s ease; }
+    .icon-button:hover { border-color: var(--color-accent); color: var(--color-accent); transform: translateY(-1px); }
+    .game-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; padding: 8px 22px 36px; }
+    .game-card { aspect-ratio: .72; position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--color-border); background: linear-gradient(155deg,var(--card-a),var(--card-b)); }
+    .game-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 42%,rgba(0,0,0,.9)); }
+    .game-copy { position: absolute; z-index: 1; inset: auto 14px 14px; }
+    .game-copy strong { display: block; margin-bottom: 4px; }
+    .game-copy span { color: #d4d4d8; font-size: var(--text-xs); }
+    .scrim { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.64); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    .sheet { position: absolute; z-index: 21; left: 50%; bottom: 0; width: min(620px,100%); max-height: 86%; overflow: auto; padding: 10px 18px 24px; border: 1px solid var(--color-border); border-bottom: 0; border-radius: 24px 24px 0 0; background: var(--color-surface); box-shadow: var(--shadow-lg); transform: translate(-50%,105%); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+    .prototype.open .scrim { opacity: 1; pointer-events: auto; }
+    .prototype.open .sheet { transform: translate(-50%,0); }
+    .handle { width: 38px; height: 4px; margin: 0 auto 14px; border-radius: 99px; background: var(--color-border); }
+    .sheet-title { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+    .sheet-title h2 { margin: 0 0 5px; font-size: var(--text-xl); }
+    .helper { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); line-height: 1.45; }
+    .preview { margin: 16px 0; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg); }
+    .preview-label { margin: 0 0 9px; color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; font-weight: 800; }
+    .preview .tab-row { background: var(--color-surface); }
+    .store-list { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+    .store-row { min-height: 66px; display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid rgba(58,58,74,.7); transition: opacity .15s ease, background .15s ease; }
+    .store-row:last-child { border-bottom: 0; }
+    .store-row:hover { background: rgba(255,255,255,.025); }
+    .store-row.disabled { opacity: .52; }
+    .drag { color: var(--color-text-muted); letter-spacing: -3px; cursor: grab; }
+    .store-name strong { display: block; }
+    .store-name span { display: block; margin-top: 3px; color: var(--color-text-muted); font-size: var(--text-xs); }
+    .move-controls { display: flex; gap: 3px; }
+    .move { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--color-text-muted); }
+    .move:hover { color: var(--color-accent); background: rgba(0,212,255,.1); }
+    .switch { position: relative; width: 46px; height: 26px; display: inline-block; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; border-radius: 99px; background: #3f3f46; cursor: pointer; transition: all .18s ease; }
+    .slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; border-radius: 50%; background: #d4d4d8; transition: transform .18s ease; }
+    .switch input:checked + .slider { background: var(--color-primary); }
+    .switch input:checked + .slider::before { transform: translateX(20px); background: white; }
+    .switch input:focus-visible + .slider, button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .sheet-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+    .text-button { border: 0; padding: 10px 12px; border-radius: 10px; background: transparent; color: var(--color-accent); font-weight: 700; cursor: pointer; }
+    .text-button:hover { background: rgba(0,212,255,.1); }
+    .done { border: 0; padding: 11px 20px; border-radius: var(--radius-full); background: var(--color-primary); font-weight: 800; cursor: pointer; }
+    .done:hover { background: var(--color-primary-hover); }
+    .menu { position: absolute; z-index: 15; top: 150px; right: 22px; width: 230px; padding: 7px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-elevated); box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transform: translateY(-6px); transition: all .15s ease; }
+    .prototype.menu-open .menu { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .menu button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; padding: 11px; border-radius: 8px; background: transparent; text-align: left; cursor: pointer; }
+    .menu button:hover { background: rgba(255,255,255,.06); }
+    .settings { min-height: calc(100vh - 58px); background: var(--color-bg); }
+    .settings-head { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--color-border); }
+    .settings-head h2 { margin: 0; }
+    .settings-content { width: min(760px,100%); margin: 0 auto; padding: 30px 22px; }
+    .settings-card { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+    .settings-link { width: 100%; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; padding: 17px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+    .settings-link:hover { background: rgba(255,255,255,.035); }
+    .settings-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--color-accent); background: rgba(0,212,255,.1); }
+    .manager { display: none; }
+    .prototype.manager-open .settings-home { display: none; }
+    .prototype.manager-open .manager { display: block; }
+    .manager .store-list { margin-top: 18px; }
+    .manager-note { margin-top: 16px; padding: 13px 15px; border-radius: 12px; color: #c4f5ff; background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25); font-size: var(--text-sm); }
+    .toast { position: absolute; z-index: 40; left: 50%; bottom: 20px; padding: 11px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: var(--color-surface-elevated); box-shadow: var(--shadow-md); opacity: 0; transform: translate(-50%,20px); pointer-events: none; transition: all .2s ease; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+    #sketch-tools { position: fixed; z-index: 200; right: 12px; bottom: 12px; display: flex; gap: 5px; padding: 7px; border-radius: 10px; background: rgba(0,0,0,.82); opacity: .45; transition: opacity .2s ease; }
+    #sketch-tools:hover { opacity: 1; }
+    #sketch-tools button { border: 0; border-radius: 7px; padding: 6px 8px; color: white; background: #27272a; cursor: pointer; font-size: 11px; }
+    @media (max-width: 700px) {
+      .game-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .library-head, .tab-shell, .game-grid { padding-left: 14px; padding-right: 14px; }
+      .store-row { grid-template-columns: 25px 1fr auto; }
+      .move-controls { display: none; }
+      .sheet { max-height: 90%; }
+      .variant-nav { padding-inline: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="variant-nav" aria-label="Mockup variants">
+    <button class="variant-tab active" data-variant="a">A: Direct edit sheet ★ Selected</button>
+    <button class="variant-tab" data-variant="b">B: Contextual menu</button>
+    <button class="variant-tab" data-variant="c">C: Settings manager</button>
+  </nav>
+
+  <main class="viewport" id="viewport">
+    <section class="variant active" id="variant-a">
+      <div class="app prototype" data-prototype>
+        <div class="topbar"><div class="brand"><span class="brand-mark">G</span>GameNative</div><div class="avatar"></div></div>
+        <div class="library-head"><div><span class="eyebrow">Your collection</span><h1>Library</h1></div><span class="count">124 games</span></div>
+        <div class="tab-shell">
+          <button class="icon-button" title="Library options">☷</button>
+          <div class="tab-row live-tabs"></div>
+          <button class="icon-button open-editor" title="Customize tabs" aria-label="Customize library tabs">✎</button>
+        </div>
+        <div class="game-grid"></div>
+        <div class="scrim close-editor"></div>
+        <section class="sheet" role="dialog" aria-modal="true" aria-label="Customize library tabs">
+          <div class="handle"></div>
+          <div class="sheet-title"><div><h2>Customize tabs</h2><p class="helper">Choose what appears in your library navigation. Hidden stores still appear in <strong>All</strong>.</p></div><button class="icon-button close-editor" aria-label="Close">×</button></div>
+          <div class="preview"><p class="preview-label">Live preview</p><div class="tab-row live-tabs"></div></div>
+          <div class="store-list"></div>
+          <div class="sheet-footer"><button class="text-button reset">Reset to default</button><button class="done close-editor">Done</button></div>
+        </section>
+        <div class="toast">Tab preferences updated</div>
+      </div>
+    </section>
+
+    <section class="variant" id="variant-b">
+      <div class="app prototype" data-prototype>
+        <div class="topbar"><div class="brand"><span class="brand-mark">G</span>GameNative</div><div class="avatar"></div></div>
+        <div class="library-head"><div><span class="eyebrow">Your collection</span><h1>Library</h1></div><span class="count">124 games</span></div>
+        <div class="tab-shell">
+          <button class="icon-button" title="Library options">☷</button>
+          <div class="tab-row live-tabs"></div>
+          <button class="icon-button menu-trigger" title="More options" aria-label="More library options">⋮</button>
+        </div>
+        <div class="menu"><button class="open-editor"><span>✎</span><span><strong>Customize tabs</strong><br><small style="color:var(--color-text-muted)">Show, hide, and reorder</small></span></button><button><span>↻</span>Refresh library</button></div>
+        <div class="game-grid"></div>
+        <div class="scrim close-editor"></div>
+        <section class="sheet" role="dialog" aria-modal="true" aria-label="Customize library tabs">
+          <div class="handle"></div>
+          <div class="sheet-title"><div><h2>Customize tabs</h2><p class="helper">Hidden tabs do not disconnect a store or remove its games from <strong>All</strong>.</p></div><button class="icon-button close-editor" aria-label="Close">×</button></div>
+          <div class="preview"><p class="preview-label">Live preview</p><div class="tab-row live-tabs"></div></div>
+          <div class="store-list"></div>
+          <div class="sheet-footer"><button class="text-button reset">Reset to default</button><button class="done close-editor">Done</button></div>
+        </section>
+        <div class="toast">Tab preferences updated</div>
+      </div>
+    </section>
+
+    <section class="variant" id="variant-c">
+      <div class="prototype settings" data-prototype>
+        <section class="settings-home">
+          <div class="settings-head"><button class="icon-button" aria-label="Back">←</button><h2>Settings</h2></div>
+          <div class="settings-content">
+            <p class="eyebrow">Interface</p><h1 style="margin-bottom:24px">Make it yours</h1>
+            <div class="settings-card">
+              <button class="settings-link open-manager"><span class="settings-icon">▤</span><span><strong>Library tabs</strong><br><small style="color:var(--color-text-muted)">All, Steam, GOG, Epic, Amazon</small></span><span>›</span></button>
+            </div>
+          </div>
+        </section>
+        <section class="manager">
+          <div class="settings-head"><button class="icon-button close-manager" aria-label="Back">←</button><div><h2>Library tabs</h2><small style="color:var(--color-text-muted)">Changes are saved automatically</small></div></div>
+          <div class="settings-content">
+            <div class="preview"><p class="preview-label">Navigation preview</p><div class="tab-row live-tabs"></div></div>
+            <div class="store-list"></div>
+            <p class="manager-note"><strong>Only the tabs change.</strong> Hiding a store here does not sign you out, disable syncing, or remove its games from All.</p>
+            <div class="sheet-footer"><button class="text-button reset">Reset to default</button><button class="done close-manager">Done</button></div>
+          </div>
+        </section>
+        <div class="toast">Tab preferences updated</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="sketch-tools" aria-label="Sketch tools">
+    <button data-width="375px">Phone</button><button data-width="768px">Tablet</button><button data-width="1280px">Desktop</button>
+  </div>
+
+  <script>
+    const defaults = [
+      { id: "steam", name: "Steam", count: 78, visible: true },
+      { id: "gog", name: "GOG", count: 16, visible: true },
+      { id: "epic", name: "Epic", count: 21, visible: true },
+      { id: "amazon", name: "Amazon", count: 9, visible: true },
+      { id: "custom", name: "Custom", count: 4, visible: true }
+    ];
+    const games = [
+      ["Hades II","Steam","#7f1d1d","#1e1b4b"],["Cyberpunk 2077","GOG","#713f12","#172554"],
+      ["Alan Wake 2","Epic","#111827","#3730a3"],["Fallout 3","Amazon","#365314","#1c1917"]
+    ];
+
+    document.querySelectorAll("[data-prototype]").forEach((prototype) => {
+      let stores = defaults.map(store => ({...store}));
+      const grids = prototype.querySelectorAll(".game-grid");
+      grids.forEach(grid => {
+        grid.innerHTML = games.map(([name,source,a,b]) => `<article class="game-card" style="--card-a:${a};--card-b:${b}"><div class="game-copy"><strong>${name}</strong><span>${source}</span></div></article>`).join("");
+      });
+
+      const toast = (message) => {
+        const node = prototype.querySelector(".toast");
+        node.textContent = message;
+        node.classList.add("show");
+        clearTimeout(node.timer);
+        node.timer = setTimeout(() => node.classList.remove("show"), 1400);
+      };
+
+      const render = () => {
+        prototype.querySelectorAll(".live-tabs").forEach(row => {
+          row.innerHTML = `<button class="lib-tab selected">All <small>124</small></button>` +
+            stores.filter(store => store.visible).map(store => `<button class="lib-tab">${store.name} <small>${store.count}</small></button>`).join("");
+        });
+        prototype.querySelectorAll(".store-list").forEach(list => {
+          list.innerHTML = `
+            <div class="store-row">
+              <span style="color:var(--color-primary)">●</span>
+              <span class="store-name"><strong>All</strong><span>Always visible · fixed first</span></span>
+              <span></span><span style="color:var(--color-text-muted)">Pinned</span>
+            </div>` + stores.map((store,index) => `
+            <div class="store-row ${store.visible ? "" : "disabled"}" data-id="${store.id}">
+              <span class="drag" title="Drag to reorder">⠿</span>
+              <span class="store-name"><strong>${store.name}</strong><span>${store.count} games</span></span>
+              <span class="move-controls">
+                <button class="move" data-move="-1" aria-label="Move ${store.name} up" ${index === 0 ? "disabled" : ""}>↑</button>
+                <button class="move" data-move="1" aria-label="Move ${store.name} down" ${index === stores.length - 1 ? "disabled" : ""}>↓</button>
+              </span>
+              <label class="switch" aria-label="Show ${store.name} tab"><input type="checkbox" ${store.visible ? "checked" : ""}><span class="slider"></span></label>
+            </div>`).join("");
+        });
+      };
+
+      prototype.addEventListener("change", (event) => {
+        const row = event.target.closest(".store-row");
+        if (!row || event.target.type !== "checkbox") return;
+        const store = stores.find(item => item.id === row.dataset.id);
+        store.visible = event.target.checked;
+        render();
+        toast(`${store.name} tab ${store.visible ? "shown" : "hidden"}`);
+      });
+      prototype.addEventListener("click", (event) => {
+        const move = event.target.closest("[data-move]");
+        if (move) {
+          const row = move.closest(".store-row");
+          const index = stores.findIndex(item => item.id === row.dataset.id);
+          const next = index + Number(move.dataset.move);
+          if (next >= 0 && next < stores.length) {
+            [stores[index], stores[next]] = [stores[next], stores[index]];
+            render();
+            toast("Tab order updated");
+          }
+        }
+        if (event.target.closest(".open-editor")) {
+          prototype.classList.remove("menu-open");
+          prototype.classList.add("open");
+        }
+        if (event.target.closest(".close-editor")) {
+          prototype.classList.remove("open");
+          toast("Tab preferences updated");
+        }
+        if (event.target.closest(".menu-trigger")) prototype.classList.toggle("menu-open");
+        if (event.target.closest(".open-manager")) prototype.classList.add("manager-open");
+        if (event.target.closest(".close-manager")) {
+          prototype.classList.remove("manager-open");
+          toast("Tab preferences updated");
+        }
+        if (event.target.closest(".reset")) {
+          stores = defaults.map(store => ({...store}));
+          render();
+          toast("Default tabs restored");
+        }
+      });
+      render();
+    });
+
+    document.querySelectorAll(".variant-tab").forEach(button => button.addEventListener("click", () => {
+      document.querySelectorAll(".variant-tab").forEach(tab => tab.classList.toggle("active", tab === button));
+      document.querySelectorAll(".variant").forEach(variant => variant.classList.toggle("active", variant.id === `variant-${button.dataset.variant}`));
+    }));
+    document.querySelectorAll("#sketch-tools [data-width]").forEach(button => button.addEventListener("click", () => {
+      document.getElementById("viewport").style.maxWidth = button.dataset.width;
+    }));
+  </script>
+</body>
+</html>
